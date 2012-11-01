@@ -51,7 +51,7 @@ func TestShutdownRequest(t *testing.T) {
 	}()
 
 	// Give the server time to get some work done before we shut it down
-	lifeCycle.WaitTilStateEntered(STATE_RUNNING)
+	lifeCycle.WaitForState(STATE_RUNNING)
 	time.Sleep(500 * time.Millisecond)
 
 	// Tricky: after we request shutdown, then the server should execute its main loop at
@@ -60,7 +60,7 @@ func TestShutdownRequest(t *testing.T) {
 
 	shutdownRequest.RequestShutdown()
 	sumAfterShutdownRequest := atomic.LoadInt32(&sum)
-	lifeCycle.WaitTilStateEntered(STATE_STOPPED)
+	lifeCycle.WaitForState(STATE_STOPPED)
 	sumAfterShutdownComplete := atomic.LoadInt32(&sum)
 
 	reqsWhileShuttingDown := sumAfterShutdownComplete - sumAfterShutdownRequest
@@ -78,7 +78,7 @@ func TestLifeCycle(t *testing.T) {
 
 	// This goroutine waits for the lifeCycle to be RUNNING, then sends to channel
 	go func() {
-		state := lifeCycle.WaitTilStateEntered(STATE_RUNNING)
+		state := lifeCycle.WaitForState(STATE_RUNNING)
 		if state != STATE_RUNNING {
 			t.Error("State should be 'running'")
 		}
@@ -109,7 +109,7 @@ func TestLifeCycle(t *testing.T) {
 	// This goroutine waits for the lifeCycle to be STOPPED, then sends to channel
 	triggeredCh = make(chan interface{}, 1)
 	go func() {
-		state := lifeCycle.WaitTilStateEntered(STATE_STOPPED)
+		state := lifeCycle.WaitForState(STATE_STOPPED)
 		if state != STATE_STOPPED {
 			t.Error("State should have been 'stopped' but was %v", state)
 		}

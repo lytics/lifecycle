@@ -26,9 +26,6 @@ type LifeCycle struct {
 	mutex   *sync.Mutex
 	onEntry map[State](chan interface{})
 	state   State
-	// fatalError          error
-
-	// onExit              map[State](chan interface{})
 }
 
 func NewLifeCycle() *LifeCycle {
@@ -43,7 +40,7 @@ func NewLifeCycle() *LifeCycle {
 // return in that case. For example, if you're waiting for STATE_RUNNING but there's an error
 // during initialization and the service jumps to STATE_STOPPED, then this function will return
 // STATE_STOPPED instead of blocking forever.
-func (this *LifeCycle) WaitTilStateEntered(state State) State {
+func (this *LifeCycle) WaitForState(state State) State {
 	waitChan := this.waitChanUntilStateEntered(state)
 	item := <-waitChan // Loop the value back into the chan in case someone else is waiting
 	waitChan <- item
