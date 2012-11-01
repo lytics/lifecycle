@@ -22,7 +22,7 @@ for !shutdownRequest.IsShutdownRequested() {
 
 You might be wondering what is wrong with the "quit channel" approach:
 ```go
-// This is the wrong way to do it, for education purposes only:
+// This is the wrong way to do it, for educational purposes only:
 keepLooping := true
 for keepLooping {
     select {
@@ -34,4 +34,4 @@ for keepLooping {
 }
 ```
 
-In the "quit channel" approach, if the workChan channel is readable, the for loop might execute a few more times (actually bounded) before the quitChan channel is read. In Go, if a select statement has multiple channels that are ready, one of them will be pseudorandomly picked. This implies that you need an exit flag outside of the select statement, which is what ShutdownRequest provides.
+In the "quit channel" approach, if the workChan channel is readable, the for loop might execute a few more times (actually unbounded) before the quitChan channel is read. In Go, if a select statement has multiple channels that are ready, one of them will be pseudorandomly picked. This implies that you need an exit flag outside of the select statement, which is what ShutdownRequest provides.
