@@ -1,9 +1,5 @@
 package lifecycle
 
-import (
-	"sync/atomic"
-)
-
 /*
 ShutdownRequest solves the problem of quickly and cleanly shutting down a goroutine. When a 
 goroutine is reading incoming work items from a channel and executing them, using the quit 
@@ -33,40 +29,38 @@ iteration:
 	}
 */
 type ShutdownRequest struct {
-	shutdownRequestFlag int32
 	shutdownRequestChan chan interface{}
 }
 
 func NewShutdownRequest() *ShutdownRequest {
 	return &ShutdownRequest{
-		shutdownRequestChan: make(chan interface{}, 1),
+		shutdownRequestChan: make(chan interface{}),
 	}
 }
 
 // Call this in the server main loop to check whether it should shut down. Use this together
 // with the shutdown request channel.
 func (this *ShutdownRequest) IsShutdownRequested() bool {
-	shouldShutdown := atomic.LoadInt32(&this.shutdownRequestFlag) > 0
-	return shouldShutdown
+	// If the channel is still open, shutdown has not yet been requested
+	select {
+	case <-this.shutdownRequestChan:
+		// Since the channel never receives any messages, this code will execute only if the 
+		// channel was closed.
+		return true
+	default:
+		// Make the receive non-blocking, so if the channel is open, we'll fall through.
+	}
+	return false // channel is still open
 }
 
-// Get the channel that will receive an object when shutdown is requested. Use the returned
-// channel in the server's main loop select statement. 
-// 
-// There is only one such channel, so don't have multiple goroutines receiving from the channel.
-//
-// Use this together with IsShutdownRequested().
+// Get the channel that will be closed when shutdown is requested. Use the returned
+// channel in the server's main loop select statement. Use the returned channel in a select 
+// statement, all inside a for loop whose predicate checks IsShutdownRequested() (see above).
 func (this *ShutdownRequest) GetShutdownRequestChan() chan interface{} {
 	return this.shutdownRequestChan
 }
 
-// Call this 
+// Call this function to asynchronously indicate that the owning service should shut down.
 func (this *ShutdownRequest) RequestShutdown() {
-	// The CompareAndSwap check ensures that we only write to the "shutdown requested" channel
-	// the first time that shutdown is requested. This prevents channel senders from blocking
-	// when this method is called multiple times.
-	didSwap := atomic.CompareAndSwapInt32(&this.shutdownRequestFlag, 0, 1)
-	if didSwap {
-		this.shutdownRequestChan <- true
-	}
+	close(this.shutdownRequestChan)
 }
