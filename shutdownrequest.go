@@ -1,5 +1,9 @@
 package lifecycle
 
+import (
+	"sync/atomic"
+)
+
 /*
 ShutdownRequest solves the problem of quickly and cleanly shutting down a goroutine. When a 
 goroutine is reading incoming work items from a channel and executing them, using the quit 
@@ -30,6 +34,7 @@ iteration:
 */
 type ShutdownRequest struct {
 	shutdownRequestChan chan interface{}
+	isShutdownRequested int32
 }
 
 func NewShutdownRequest() *ShutdownRequest {
@@ -62,5 +67,9 @@ func (this *ShutdownRequest) GetShutdownRequestChan() chan interface{} {
 
 // Call this function to asynchronously indicate that the owning service should shut down.
 func (this *ShutdownRequest) RequestShutdown() {
-	close(this.shutdownRequestChan)
+	// The compare-and-swap operation makes sure we only try to close the channel once.
+	// Attempting to close it multiple times will cause a runtime panic.
+	if atomic.CompareAndSwapInt32(&this.isShutdownRequested, 0, 1) {
+		close(this.shutdownRequestChan)
+	}
 }
